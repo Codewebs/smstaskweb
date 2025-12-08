@@ -2,7 +2,7 @@ const mysql = require('mysql');
 
 global.DBase = "indizapaiebd"
 global.DBuser = "indiza"
-global.DBpass = ""
+global.DBpass = "Securise21"
 global.DBhost = "db4free.net"
 
 
