@@ -14,10 +14,10 @@
     "dialect": "mysql"
   },
   "production": {
-    "username": "root",
-    "password": null,
-    "database": "bip",
-    "host": "127.0.0.1",
+    "username": "indiza",
+    "password": "Securise21",
+    "database": "indizapaiebd",
+    "host": "db4free.net",
     "dialect": "mysql"
   }
 }
