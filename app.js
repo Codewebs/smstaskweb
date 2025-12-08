@@ -16,6 +16,9 @@ app.use((req, res, next) => {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
   if (token !== process.env.AUTH_TOKEN) {
+    console.log('error ------------------')
+    console.log(token)
+    console.log(process.env.AUTH_TOKEN)
     console.log('error connexion')
     return res.status(401).json({ error: 'Unauthorized' });
   }
