@@ -1,7 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
-require('dotenv').config();
+
 
 const smsRoutes = require('./routes/sms');
 const statsRoutes = require('./routes/stats');
