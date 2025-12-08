@@ -1,4 +1,4 @@
-const mysql = require('mysql'); 
+/*const mysql = require('mysql'); 
 
 global.DBase = "indizapaiebd"
 global.DBuser = "indiza"
@@ -7,7 +7,7 @@ global.DBhost = "db4free.net"
 
 
 global.DBdialect = "mysql" 
-/*
+
 global.DBase = "nweb"
 global.DBuser = "indiza"
 global.DBpass = ""
