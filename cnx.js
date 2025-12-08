@@ -1,9 +1,9 @@
 const mysql = require('mysql'); 
 
-global.DBase = "bip"
-global.DBuser = "root"
+global.DBase = "indizapaiebd"
+global.DBuser = "indiza"
 global.DBpass = ""
-global.DBhost = "localhost"
+global.DBhost = "db4free.net"
 
 
 global.DBdialect = "mysql" 
