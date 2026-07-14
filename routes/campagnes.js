@@ -27,8 +27,12 @@ router.get('/', async (req, res) => {
 
         res.json(results);
     } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'DB_ERROR' });
+        console.error("❌ Erreur lors de la création de la campagne:", e);
+        res.status(500).json({
+            error: 'DB_ERROR',
+            details: e.message,
+            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+        });
     }
 });
 
@@ -72,8 +76,12 @@ router.get('/:id', async (req, res) => {
             destinataires: enrichedDests
         });
     } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'DB_ERROR' });
+        console.error("❌ Erreur lors de la création de la campagne:", e);
+        res.status(500).json({
+            error: 'DB_ERROR',
+            details: e.message,
+            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+        });
     }
 });
 
@@ -112,13 +120,16 @@ router.post('/', async (req, res) => {
                         }
                     });
                     finalContactIds.push(contact.idContact);
-                } else {
+                } else if (typeof dest === 'number' || typeof dest === 'string' || typeof dest === 'bigint') {
                     // C'est un ID classique (Long)
                     finalContactIds.push(dest);
                 }
             }
 
-            await CampagneDestinataire.bulkCreate(finalContactIds.map(id => ({
+            // DÉDOUBLONNAGE des IDs pour éviter l'erreur de clé primaire sur CampagneDestinataire
+            const uniqueContactIds = [...new Set(finalContactIds.map(id => id.toString()))];
+
+            await CampagneDestinataire.bulkCreate(uniqueContactIds.map(id => ({
                 idCampagne: result.idCampagne,
                 idContact: id,
                 estEnvoye: false
@@ -137,8 +148,12 @@ router.post('/', async (req, res) => {
             percentage: 0
         });
     } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'DB_ERROR' });
+        console.error("❌ Erreur lors de la création de la campagne:", e);
+        res.status(500).json({
+            error: 'DB_ERROR',
+            details: e.message,
+            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+        });
     }
 });
 
@@ -148,8 +163,12 @@ router.delete('/:id', async (req, res) => {
         await Campagne.destroy({ where: { idCampagne: req.params.id } });
         res.json({ ok: true });
     } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'DB_ERROR' });
+        console.error("❌ Erreur lors de la création de la campagne:", e);
+        res.status(500).json({
+            error: 'DB_ERROR',
+            details: e.message,
+            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+        });
     }
 });
 
@@ -164,8 +183,12 @@ router.delete('/:id/destinataires/:contactId', async (req, res) => {
         });
         res.json({ ok: true });
     } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'DB_ERROR' });
+        console.error("❌ Erreur lors de la création de la campagne:", e);
+        res.status(500).json({
+            error: 'DB_ERROR',
+            details: e.message,
+            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+        });
     }
 });
 

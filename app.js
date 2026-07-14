@@ -47,7 +47,9 @@ app.use('/groupes', groupeRoutes);
 app.use('/campagnes', campagneRoutes);
 
 // Nettoyage automatique quotidien
-const { Contact } = require('./models');
+const { Contact, Campagne, CampagneVague, CampagneDestinataire, Sms, Sequelize } = require('./models');
+const { Op } = Sequelize;
+
 setInterval(async () => {
   try {
     const [results] = await Contact.sequelize.query(`
@@ -60,6 +62,107 @@ setInterval(async () => {
     console.error('[Cleanup Error]', e);
   }
 }, 24 * 60 * 60 * 1000);
+
+// --- SCHEDULER DE CAMPAGNES ---
+// Vérifie toutes les minutes s'il y a des vagues à envoyer
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const nowDate = now.toISOString().split('T')[0];
+    const nowTime = now.toTimeString().split(' ')[0];
+
+    // 1. Trouver les vagues EN_ATTENTE ou PROGRAMMÉ dont l'heure est passée
+    const vagues = await CampagneVague.findAll({
+      where: {
+        statut: { [Op.in]: ['EN_ATTENTE', 'PROGRAMMÉ'] },
+        [Op.or]: [
+          { datePrevue: { [Op.lt]: nowDate } },
+          {
+            [Op.and]: [
+              { datePrevue: nowDate },
+              { heurePrevue: { [Op.lte]: nowTime } }
+            ]
+          }
+        ]
+      },
+      include: [{ model: Campagne }]
+    });
+
+    for (const vague of vagues) {
+      console.log(`[Scheduler] Traitement vague ${vague.idVague} pour campagne ${vague.idCampagne}`);
+
+      // 2. Récupérer les destinataires non encore envoyés pour cette campagne (limité au quota)
+      const destinataires = await CampagneDestinataire.findAll({
+        where: {
+          idCampagne: vague.idCampagne,
+          estEnvoye: false
+        },
+        limit: vague.quota || 1000
+      });
+
+      if (destinataires.length > 0) {
+        // 3. Récupérer les infos contacts pour avoir les numéros
+        const contactIds = destinataires.map(d => d.idContact);
+        const contacts = await Contact.findAll({
+          where: { idContact: { [Op.in]: contactIds } }
+        });
+
+        // 4. Créer les entrées dans la table 'sms'
+        const smsToCreate = destinataires.map(dest => {
+          const contact = contacts.find(c => c.idContact == dest.idContact);
+          if (!contact) return null;
+
+          // Remplacement basique des tags
+          let message = vague.Campagne.messageTemplate;
+          message = message.replace(/{nom}/g, contact.nom || '');
+          message = message.replace(/{fonction}/g, contact.fonction || '');
+
+          return {
+            contenuSMS: message,
+            numeroDestinataire: contact.telephone,
+            statut: 0, // PENDING
+            idCampagne: vague.idCampagne,
+            dateEnregistrementSms: new Date(),
+            heureEnregistrementSms: new Date().toTimeString().split(' ')[0]
+          };
+        }).filter(s => s !== null);
+
+        if (smsToCreate.length > 0) {
+          await Sms.bulkCreate(smsToCreate);
+
+          // 5. Marquer les destinataires comme "envoyés" (dans le sens "mis en file d'attente SMS")
+          await CampagneDestinataire.update(
+            { estEnvoye: true },
+            { where: { idCampagne: vague.idCampagne, idContact: { [Op.in]: contactIds } } }
+          );
+        }
+      }
+
+      // 6. Marquer la vague comme TERMINEE
+      vague.statut = 'TERMINE';
+      await vague.save();
+
+      // 7. Vérifier si toute la campagne est finie
+      const restants = await CampagneDestinataire.count({
+        where: { idCampagne: vague.idCampagne, estEnvoye: false }
+      });
+
+      if (restants === 0) {
+        await Campagne.update(
+          { statut: 'TERMINÉ' },
+          { where: { idCampagne: vague.idCampagne } }
+        );
+      } else {
+        await Campagne.update(
+          { statut: 'EN_COURS' },
+          { where: { idCampagne: vague.idCampagne } }
+        );
+      }
+    }
+  } catch (error) {
+    console.error('[Scheduler Error]', error);
+  }
+}, 60 * 1000); // Exécution toutes les 60 secondes
 
 const port = process.env.PORT || 3000;
 app.listen(port, '0.0.0.0', () => {  // ← Ajouter '0.0.0.0'
