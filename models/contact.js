@@ -15,7 +15,12 @@ module.exports = (sequelize, DataTypes) => {
     },
     nom: DataTypes.STRING,
     telephone: DataTypes.STRING,
-    idGroupe: DataTypes.INTEGER
+    idGroupe: DataTypes.INTEGER,
+    fonction: DataTypes.STRING,
+    isEphemeral: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    }
   }, {
     sequelize,
     modelName: 'Contact',

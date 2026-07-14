@@ -46,6 +46,21 @@ app.use('/contacts', contactRoutes);
 app.use('/groupes', groupeRoutes);
 app.use('/campagnes', campagneRoutes);
 
+// Nettoyage automatique quotidien
+const { Contact } = require('./models');
+setInterval(async () => {
+  try {
+    const [results] = await Contact.sequelize.query(`
+      DELETE FROM contacts
+      WHERE isEphemeral = true
+      AND idContact NOT IN (SELECT idContact FROM campagne_destinataires)
+    `);
+    if (results.affectedRows > 0) console.log(`[Cleanup] ${results.affectedRows} éphémères supprimés.`);
+  } catch (e) {
+    console.error('[Cleanup Error]', e);
+  }
+}, 24 * 60 * 60 * 1000);
+
 const port = process.env.PORT || 3000;
 app.listen(port, '0.0.0.0', () => {  // ← Ajouter '0.0.0.0'
     console.log(`API running on http://0.0.0.0:${port}`);

@@ -98,7 +98,27 @@ router.post('/', async (req, res) => {
         }
 
         if (destinataires && destinataires.length > 0) {
-            await CampagneDestinataire.bulkCreate(destinataires.map(id => ({
+            const finalContactIds = [];
+
+            for (const dest of destinataires) {
+                if (typeof dest === 'object' && dest.telephone) {
+                    // Contact éphémère ou importé par CSV
+                    const [contact] = await Contact.findOrCreate({
+                        where: { telephone: dest.telephone },
+                        defaults: {
+                            nom: dest.nom || 'Inconnu',
+                            fonction: dest.fonction,
+                            isEphemeral: true // On marque comme éphémère pour le nettoyage futur
+                        }
+                    });
+                    finalContactIds.push(contact.idContact);
+                } else {
+                    // C'est un ID classique (Long)
+                    finalContactIds.push(dest);
+                }
+            }
+
+            await CampagneDestinataire.bulkCreate(finalContactIds.map(id => ({
                 idCampagne: result.idCampagne,
                 idContact: id,
                 estEnvoye: false
