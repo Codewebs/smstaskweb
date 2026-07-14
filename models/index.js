@@ -40,10 +40,9 @@ Object.keys(db).forEach(modelName => {
   }
 });
 
-// 3. SYNCHRONISER LA BD (Uniquement pour créer les tables manquantes si besoin)
-// On n'utilise plus { force: true } pour éviter de supprimer les données et les erreurs de clés étrangères.
-sequelize.sync().then(() => {
-  console.log("Base de données synchronisée (tables manquantes créées).");
+// 3. SYNCHRONISER LA BD (Met à jour le schéma automatiquement sans supprimer les données)
+sequelize.sync({ alter: true }).then(() => {
+  console.log("Base de données synchronisée et schéma mis à jour (alter: true).");
 }).catch(err => {
   console.error("Erreur de synchronisation :", err);
 });
