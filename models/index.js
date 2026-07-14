@@ -6,28 +6,18 @@ const Sequelize = require('sequelize');
 const process = require('process');
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
+const config = require(__dirname + '/../config/config.js')[env];
 const db = {};
 
 let sequelize;
-if (process.env.DB_NAME) {
-  sequelize = new Sequelize(
-    process.env.DB_NAME,
-    process.env.DB_USER,
-    process.env.DB_PASS,
-    {
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT || 3306,
-      dialect: config.dialect || 'mysql',
-      dialectOptions: config.dialectOptions || {}
-    }
-  );
-} else if (config.use_env_variable) {
+
+if (config.use_env_variable) {
   sequelize = new Sequelize(process.env[config.use_env_variable], config);
 } else {
   sequelize = new Sequelize(config.database, config.username, config.password, config);
 }
 
+// 1. CHARGER LES MODÈLES D'ABORD
 fs
   .readdirSync(__dirname)
   .filter(file => {
@@ -43,10 +33,19 @@ fs
     db[model.name] = model;
   });
 
+// 2. ÉTABLIR LES ASSOCIATIONS
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
   }
+});
+
+// 3. SYNCHRONISER LA BD (Uniquement pour créer les tables manquantes si besoin)
+// On n'utilise plus { force: true } pour éviter de supprimer les données et les erreurs de clés étrangères.
+sequelize.sync().then(() => {
+  console.log("Base de données synchronisée (tables manquantes créées).");
+}).catch(err => {
+  console.error("Erreur de synchronisation :", err);
 });
 
 db.sequelize = sequelize;
