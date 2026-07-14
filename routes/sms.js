@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { Sms } = require('../models');
+const { Sms, Sequelize } = require('../models');
+const { Op } = Sequelize;
 const pool = require('../db');
 
 // 📌 1) GET /sms/pending
@@ -44,6 +45,40 @@ router.post('/:id/mark-swiped', async (req, res) => {
     }
 });
 
+// GET /sms/failed?period=day|week|month
+router.get('/failed', async (req, res) => {
+  const period = req.query.period || 'month';
+  let dateFrom = new Date();
+
+  switch (period) {
+    case 'day':
+      dateFrom.setDate(dateFrom.getDate() - 1);
+      break;
+    case 'week':
+      dateFrom.setDate(dateFrom.getDate() - 7);
+      break;
+    case 'month':
+      dateFrom.setMonth(dateFrom.getMonth() - 1);
+      break;
+  }
+
+  try {
+    const rows = await Sms.findAll({
+      attributes: ['idSms', 'contenuSMS', 'numeroDestinataire', 'dateEnregistrementSms', 'heureEnregistrementSms'],
+      where: {
+        statut: 1, // FAILED
+        dateEnregistrementSms: { [Op.gte]: dateFrom }
+      },
+      order: [['dateEnregistrementSms', 'ASC'], ['heureEnregistrementSms', 'ASC']]
+    });
+
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'DB_ERROR' });
+  }
+});
+
 
 // POST /sms/:id/mark-sent
 router.post('/:id/mark-sent', async (req, res) => {
@@ -52,7 +87,7 @@ router.post('/:id/mark-sent', async (req, res) => {
 
         if (!sms) return res.status(404).json({ error: "Not found" });
 
-        sms.statut = "1"; // SENT (STRING car ton modèle le définit comme STRING)
+        sms.statut = "2"; // SENT (STRING car ton modèle le définit comme STRING)
         sms.dateEnvoiSms = new Date(); // DATE ok
 
         // Format HH:mm:ss
@@ -79,7 +114,7 @@ router.post('/:id/mark-failed', async (req, res) => {
 
         if (!sms) return res.status(404).json({ error: "Not found" });
 
-        sms.statut = 2; // FAILED
+        sms.statut = 1; // FAILED
         await sms.save();
 
         res.json({ ok: true });
@@ -131,8 +166,8 @@ router.get('/recent', async (req, res) => {
             contenuSMS: row.contenuSMS,
             date: row.date,
             time: row.time,
-            status: row.statut === 1 ? 'SENT' :
-                    row.statut === 2 ? 'FAILED' : 'PENDING'
+            status: row.statut == 2 ? 'SENT' :
+                    row.statut == 1 ? 'FAILED' : 'PENDING'
         }));
 
         res.json(formatted);

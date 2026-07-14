@@ -2,22 +2,27 @@
   "development": {
     "username": "root",
     "password": null,
-    "database": "bip",
+    "database": "sms_bd",
     "host": "127.0.0.1",
     "dialect": "mysql"
   },
   "test": {
     "username": "root",
     "password": null,
-    "database": "bip",
+    "database": "sms_bd",
     "host": "127.0.0.1",
     "dialect": "mysql"
   },
   "production": {
-    "username": "indiza",
-    "password": "Securise21",
-    "database": "indizapaiebd",
-    "host": "db4free.net",
-    "dialect": "mysql"
+    "username": "DB_USER",
+    "password": "DB_PASS",
+    "database": "DB_NAME",
+    "host": "DB_HOST",
+    "dialect": "mysql",
+    "dialectOptions": {
+      "ssl": {
+        "rejectUnauthorized": false
+      }
+    }
   }
 }

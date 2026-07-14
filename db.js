@@ -2,12 +2,17 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const pool = mysql.createPool({
-  host: "db4free.net",
-  user: "indiza",
-  password: "Securise21",
-  database: "indizapaiebd",
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
   charset: 'utf8mb4',
+  ssl: process.env.SSL_REQUIRED === 'true' ? {
+    rejectUnauthorized: false
+  } : null
 });
+
 module.exports = pool;

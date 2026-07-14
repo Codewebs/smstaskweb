@@ -2,18 +2,15 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Sms', {
-      id: {
+    await queryInterface.createTable('sms', {
+      idSms: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.BIGINT
       },
       contenuSMS: {
         type: Sequelize.STRING
-      },
-      dateBilan: {
-        type: Sequelize.DATE
       },
       dateEnregistrementSms: {
         type: Sequelize.DATE
@@ -34,19 +31,11 @@ module.exports = {
         type: Sequelize.STRING
       },
       statut: {
-        type: Sequelize.BOOLEAN
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
+        type: Sequelize.STRING
       }
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Sms');
+    await queryInterface.dropTable('sms');
   }
 };

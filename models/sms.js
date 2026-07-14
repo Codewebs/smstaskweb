@@ -15,14 +15,14 @@ module.exports = (sequelize, DataTypes) => {
       autoIncrement: true
     },
     contenuSMS: DataTypes.STRING,
-    dateBilan: DataTypes.DATE,
     dateEnregistrementSms: DataTypes.DATE,
     dateEnvoiSms: DataTypes.DATE,
     heureEnregistrementSms: DataTypes.TIME,
     heureEnvoiSms: DataTypes.TIME,
     numeroDestinataire: DataTypes.STRING,
     numeroExpediteur: DataTypes.STRING,
-    statut: DataTypes.STRING
+    statut: DataTypes.STRING,
+    idCampagne: DataTypes.BIGINT
   }, {
     sequelize,
     modelName: 'Sms',
