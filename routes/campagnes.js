@@ -27,12 +27,8 @@ router.get('/', async (req, res) => {
 
         res.json(results);
     } catch (e) {
-        console.error("❌ Erreur lors de la création de la campagne:", e);
-        res.status(500).json({
-            error: 'DB_ERROR',
-            details: e.message,
-            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
-        });
+        console.error("❌ Erreur lors de la récupération des campagnes:", e);
+        res.status(500).json({ error: 'DB_ERROR' });
     }
 });
 
@@ -76,67 +72,76 @@ router.get('/:id', async (req, res) => {
             destinataires: enrichedDests
         });
     } catch (e) {
-        console.error("❌ Erreur lors de la création de la campagne:", e);
-        res.status(500).json({
-            error: 'DB_ERROR',
-            details: e.message,
-            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
-        });
+        console.error("❌ Erreur lors de la récupération du détail de la campagne:", e);
+        res.status(500).json({ error: 'DB_ERROR' });
     }
 });
 
 // POST /campagnes - Créer une campagne
 router.post('/', async (req, res) => {
     const { nomCampagne, messageTemplate, destinataires, vagues } = req.body;
+    const { sequelize } = require('../models');
+
+    // Début de transaction pour garantir l'atomicité
+    const t = await sequelize.transaction();
+
     try {
+        console.log(`[Campaign] Création de la campagne: "${nomCampagne}"`);
+
         const result = await Campagne.create({
             nomCampagne,
             messageTemplate,
             statut: 'PROGRAMMÉ'
-        });
+        }, { transaction: t });
+
+        console.log(`[Campaign] Campagne ID ${result.idCampagne} créée en base.`);
 
         if (vagues && vagues.length > 0) {
+            console.log(`[Campaign] Création de ${vagues.length} vagues...`);
             await CampagneVague.bulkCreate(vagues.map(v => ({
                 idCampagne: result.idCampagne,
                 datePrevue: v.datePrevue,
                 heurePrevue: v.heurePrevue,
                 quota: v.quota,
                 statut: 'EN_ATTENTE'
-            })));
+            })), { transaction: t });
         }
 
         if (destinataires && destinataires.length > 0) {
+            console.log(`[Campaign] Traitement de ${destinataires.length} destinataires...`);
             const finalContactIds = [];
 
             for (const dest of destinataires) {
                 if (typeof dest === 'object' && dest.telephone) {
-                    // Contact éphémère ou importé par CSV
                     const [contact] = await Contact.findOrCreate({
                         where: { telephone: dest.telephone },
                         defaults: {
                             nom: dest.nom || 'Inconnu',
                             fonction: dest.fonction,
-                            isEphemeral: true // On marque comme éphémère pour le nettoyage futur
-                        }
+                            isEphemeral: true
+                        },
+                        transaction: t
                     });
                     finalContactIds.push(contact.idContact);
-                } else if (typeof dest === 'number' || typeof dest === 'string' || typeof dest === 'bigint') {
-                    // C'est un ID classique (Long)
+                } else if (dest !== null && dest !== undefined) {
                     finalContactIds.push(dest);
                 }
             }
 
-            // DÉDOUBLONNAGE des IDs pour éviter l'erreur de clé primaire sur CampagneDestinataire
             const uniqueContactIds = [...new Set(finalContactIds.map(id => id.toString()))];
 
             await CampagneDestinataire.bulkCreate(uniqueContactIds.map(id => ({
                 idCampagne: result.idCampagne,
                 idContact: id,
                 estEnvoye: false
-            })));
+            })), { transaction: t });
+            console.log(`[Campaign] ${uniqueContactIds.length} destinataires liés.`);
         }
 
-        // Retourner un objet compatible avec CampagneResponse (createdAt en Long)
+        // Valider la transaction
+        await t.commit();
+        console.log(`[Campaign] Transaction validée avec succès pour ID ${result.idCampagne}.`);
+
         res.status(201).json({
             idCampagne: Number(result.idCampagne),
             nomCampagne: result.nomCampagne,
@@ -148,6 +153,8 @@ router.post('/', async (req, res) => {
             percentage: 0
         });
     } catch (e) {
+        // Annuler la transaction en cas d'erreur
+        if (t) await t.rollback();
         console.error("❌ Erreur lors de la création de la campagne:", e);
         res.status(500).json({
             error: 'DB_ERROR',
@@ -163,12 +170,8 @@ router.delete('/:id', async (req, res) => {
         await Campagne.destroy({ where: { idCampagne: req.params.id } });
         res.json({ ok: true });
     } catch (e) {
-        console.error("❌ Erreur lors de la création de la campagne:", e);
-        res.status(500).json({
-            error: 'DB_ERROR',
-            details: e.message,
-            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
-        });
+        console.error("❌ Erreur lors de la suppression de la campagne:", e);
+        res.status(500).json({ error: 'DB_ERROR' });
     }
 });
 

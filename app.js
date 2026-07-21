@@ -21,7 +21,7 @@ app.get('/ping', (req, res) => {
   res.json({
     status: 'pong',
     timestamp: Date.now(),
-    service: 'SmsTask API',
+    service: 'Bulk SMS Sender Pro API',
     uptime: process.uptime()
   });
 });
@@ -65,11 +65,16 @@ setInterval(async () => {
 
 // --- SCHEDULER DE CAMPAGNES ---
 // Vérifie toutes les minutes s'il y a des vagues à envoyer
+/*
 setInterval(async () => {
   try {
     const now = new Date();
+    // Ajustement pour le fuseau horaire local si nécessaire
+    // const localNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
     const nowDate = now.toISOString().split('T')[0];
     const nowTime = now.toTimeString().split(' ')[0];
+
+    console.log(`[Scheduler] Check à ${nowDate} ${nowTime}...`);
 
     // 1. Trouver les vagues EN_ATTENTE ou PROGRAMMÉ dont l'heure est passée
     const vagues = await CampagneVague.findAll({
@@ -88,8 +93,19 @@ setInterval(async () => {
       include: [{ model: Campagne }]
     });
 
+    if (vagues.length > 0) {
+        console.log(`[Scheduler] ${vagues.length} vague(s) due(s) trouvée(s).`);
+    }
+
     for (const vague of vagues) {
-      console.log(`[Scheduler] Traitement vague ${vague.idVague} pour campagne ${vague.idCampagne}`);
+      console.log(`[Scheduler] Traitement vague ${vague.idVague} pour campagne ${vague.idCampagne} (${vague.Campagne ? vague.Campagne.nomCampagne : 'N/A'})`);
+
+      if (!vague.Campagne) {
+          console.warn(`[Scheduler] Vague ${vague.idVague} sans campagne associée. Passage.`);
+          vague.statut = 'ERREUR_NO_CAMP';
+          await vague.save();
+          continue;
+      }
 
       // 2. Récupérer les destinataires non encore envoyés pour cette campagne (limité au quota)
       const destinataires = await CampagneDestinataire.findAll({
@@ -163,8 +179,14 @@ setInterval(async () => {
     console.error('[Scheduler Error]', error);
   }
 }, 60 * 1000); // Exécution toutes les 60 secondes
+*/
 
 const port = process.env.PORT || 3000;
-app.listen(port, '0.0.0.0', () => {  // ← Ajouter '0.0.0.0'
-    console.log(`API running on http://0.0.0.0:${port}`);
+app.listen(port, '0.0.0.0', () => {
+    console.log('================================================');
+    console.log(`🚀 SMS TASK API démarrée avec succès !`);
+    console.log(`🌍 URL Serveur : http://localhost:${port}`);
+    console.log(`📅 Date : ${new Date().toLocaleString()}`);
+    console.log(`🗄️  Base de données : ${process.env.DB_NAME || 'sms_bd'} sur ${process.env.DB_HOST || 'localhost'}`);
+    console.log('================================================');
 });
